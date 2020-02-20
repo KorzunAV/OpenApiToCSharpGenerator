@@ -1,0 +1,11 @@
+﻿using System.IO;
+using Newtonsoft.Json;
+
+namespace [@namespace]
+{
+    [JsonObject(MemberSerialization.OptIn)]
+    public class [@className]
+    {
+[@fields]
+    }
+}

@@ -1,0 +1,11 @@
+﻿        /// <summary>
+        /// [@summary]
+        /// </summary>
+        /// <param name="args">Args</param>
+        /// <param name="token">Throws a <see cref=\"T: System.OperationCanceledException\" /> if this token has had cancellation requested.</param>
+        /// <returns></returns>
+        public Task<OperationResult<[@responseType]>> [@functionName]Async([@requestName]Request args, CancellationToken token = default)
+        {
+            var url = $"{BaseUrl}[@urlPart]";
+            return _httpClient.[@requestType]Async<[@requestName]Request, [@responseType]>(url, args, token);
+        }

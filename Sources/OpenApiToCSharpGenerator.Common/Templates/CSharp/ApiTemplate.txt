@@ -1,0 +1,12 @@
+﻿using System.Threading;
+using System.Threading.Tasks;
+using OpenApi.Client.Common;
+using [@projectName].[@subProjectName].Models.Requests; 
+
+namespace [@projectName].[@subProjectName]
+{
+    public partial class [@apiName]
+    {
+[@apiFunctions]
+    }
+}

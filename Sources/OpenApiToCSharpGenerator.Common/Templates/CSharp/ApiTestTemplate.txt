@@ -1,0 +1,14 @@
+﻿using System.Threading;
+using System.Threading.Tasks;
+using NUnit.Framework;
+using [@projectName].[@subProjectName].Models.Requests; 
+
+namespace [@projectName].Tests.[@subProjectName]Tests
+{
+    public partial class [@subProjectName]Test : BaseTest
+    {
+        [@apiTestRequests]
+
+[@apiTestFunctions]
+    }
+}

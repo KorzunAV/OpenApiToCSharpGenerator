@@ -1,0 +1,7 @@
+﻿        [Test]
+        public async Task [@requestName]AsyncTest()
+        {
+            if ([@requestName]Request == null) Assert.Fail(); 
+            var result = await Api.[@requestName]Async([@requestName]Request);
+            TestProperties(result);
+        }
