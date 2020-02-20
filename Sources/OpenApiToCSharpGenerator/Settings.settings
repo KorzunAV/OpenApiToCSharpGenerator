@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="UrlToOpenApi" Type="System.String" Scope="User">
-      <Value Profile="(Default)">https://gate.decta.com/static/swagger/swagger_decta.yaml?v=defa3b686bc9de9ccaa31c04b6343533</Value>
+      <Value Profile="(Default)"></Value>
     </Setting>
     <Setting Name="ApiName" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
