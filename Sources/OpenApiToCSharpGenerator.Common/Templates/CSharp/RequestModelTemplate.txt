@@ -2,13 +2,14 @@
 using Newtonsoft.Json;
 using OpenApi.Client.Common;
 using OpenApi.Client.Common.Attributes;
-using [@projectName].[@subProjectName].Models;
+using [@ProjectName].[@SubProjectName].Models;
+using [@ProjectName].[@SubProjectName].Enums;
 
-namespace [@projectName].[@subProjectName].Models.Requests
+namespace [@ProjectName].[@SubProjectName].Models.Requests
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class [@requestName]Request : AuthorizedRequest
+    public class [@RequestName]Request : AuthorizedRequest
     {
-[@fields]
+[@Fields]
     }
 }

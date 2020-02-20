@@ -1,11 +1,13 @@
 ﻿using System.IO;
 using Newtonsoft.Json;
+using [@ProjectName].[@SubProjectName].Enums;
 
-namespace [@namespace]
+namespace [@Namespace]
 {
+    [@OnDeprecated]
     [JsonObject(MemberSerialization.OptIn)]
-    public class [@className]
+    public class [@ClassName]
     {
-[@fields]
+[@Fields]
     }
 }

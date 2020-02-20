@@ -10,6 +10,7 @@
         string PahtToGeneratedComponents { get; set; }
         string PathToRequests { get; set; }
         string PathToGeneratedTests { get; set; }
+        string PathToGeneratedEnums { get; set; }
         string PathToModels { get; set; }
         string PathToResponses { get; set; }
         TemplateType Template { get; set; }

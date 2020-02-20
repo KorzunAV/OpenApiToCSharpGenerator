@@ -1,0 +1,10 @@
+﻿namespace [@ProjectName].[@SubProjectName].Enums
+{
+    /// <summary>
+    /// [@Description]
+    /// </summary>
+    [@OnDeprecated]public enum [@EnumName]Enum
+    {
+[@EnumFields]
+    }
+}

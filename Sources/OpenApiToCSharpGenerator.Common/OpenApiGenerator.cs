@@ -7,12 +7,14 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Readers;
+using Newtonsoft.Json;
 
 namespace OpenApiToCSharpGenerator.Common
 {
     public class OpenApiGenerator
     {
         private readonly IAppSettings _settings;
+        private InternalVariables _internalVariables;
 
         public OpenApiGenerator(IAppSettings settings)
         {
@@ -24,6 +26,8 @@ namespace OpenApiToCSharpGenerator.Common
         {
             try
             {
+                ReadInternalVariables();
+
                 var httpClient = new HttpClient();
                 var stream = await httpClient.GetStreamAsync(_settings.UrlToOpenApi);
                 var openApiDocument = new OpenApiStreamReader().Read(stream, out var diagnostic);
@@ -38,6 +42,12 @@ namespace OpenApiToCSharpGenerator.Common
             }
         }
 
+        private void ReadInternalVariables()
+        {
+            var json = File.ReadAllText(Path.Combine("Templates", _settings.Template.ToString(), "InternalVariables.json"));
+            _internalVariables = JsonConvert.DeserializeObject<InternalVariables>(json);
+        }
+
         private void CreateApi(OpenApiDocument api)
         {
             var apiFunctionTemplate = File.ReadAllText(Path.Combine("Templates", _settings.Template.ToString(), "ApiFunctionTemplate.txt"));
@@ -49,27 +59,22 @@ namespace OpenApiToCSharpGenerator.Common
                     var requestName = CreateRequestClass(openApiPath, apiOperation);
                     var respType = GetResponseClass(_settings.ApiName, apiOperation);
 
-                    var summary = GetSummary(apiOperation.Value.Description, 8);
                     var fName = GetFunctionName(openApiPath, apiOperation);
                     var url = ToUrl(openApiPath, apiOperation);
-                    var apiFunctionFile = apiFunctionTemplate
-                        .Replace("[@summary]", summary)
-                        .Replace("[@responseType]", respType)
-                        .Replace("[@functionName]", fName)
-                        .Replace("[@requestName]", requestName)
-                        .Replace("[@urlPart]", url)
-                        .Replace("[@requestType]", apiOperation.Key.ToString());
+                    var apiFunctionFile = Transform(apiFunctionTemplate, apiOperation.Value)
+                        .Replace("[@ResponseType]", respType)
+                        .Replace("[@FunctionName]", fName)
+                        .Replace("[@RequestName]", requestName)
+                        .Replace("[@UrlPart]", url)
+                        .Replace("[@RequestType]", apiOperation.Key.ToString());
                     apiFuncList.Add(apiFunctionFile);
                 }
             }
 
             var space = new string(' ', 4);
             var apiTemplate = File.ReadAllText(Path.Combine("Templates", _settings.Template.ToString(), "ApiTemplate.txt"));
-            var apiFile = apiTemplate
-                .Replace("[@projectName]", _settings.ProjectName)
-                .Replace("[@subProjectName]", _settings.SubProjectName)
-                .Replace("[@apiName]", _settings.ApiName)
-                .Replace("[@apiFunctions]", string.Join($"{Environment.NewLine}{space}{Environment.NewLine}", apiFuncList));
+            var apiFile = Transform(apiTemplate, null, null, api)
+                .Replace("[@ApiFunctions]", string.Join($"{Environment.NewLine}{space}{Environment.NewLine}", apiFuncList));
 
             SaveToFile(apiFile, _settings.PahtToGeneratedApi, _settings.ApiName);
         }
@@ -109,8 +114,8 @@ namespace OpenApiToCSharpGenerator.Common
                 foreach (var apiOperation in openApiPath.Value.Operations)
                 {
                     var requestName = CreateRequestClass(openApiPath, apiOperation);
-                    var apiTestFunctionFile = apiTestFunctionTemplate
-                        .Replace("[@requestName]", requestName);
+                    var apiTestFunctionFile = Transform(apiTestFunctionTemplate, apiOperation.Value)
+                        .Replace("[@RequestName]", requestName);
                     apiTestFuncList.Add(apiTestFunctionFile);
                     requests.Add($"private {requestName}Request {requestName}Request = null;");
                 }
@@ -118,11 +123,9 @@ namespace OpenApiToCSharpGenerator.Common
 
             var space = new string(' ', 4);
             var apiTestTemplate = File.ReadAllText(Path.Combine("Templates", _settings.Template.ToString(), "ApiTestTemplate.txt"));
-            var apiTestFile = apiTestTemplate
-                .Replace("[@projectName]", _settings.ProjectName)
-                .Replace("[@subProjectName]", _settings.SubProjectName)
-                .Replace("[@apiTestRequests]", string.Join($"{Environment.NewLine}{space}{space}", requests))
-                .Replace("[@apiTestFunctions]", string.Join($"{Environment.NewLine}{Environment.NewLine}", apiTestFuncList));
+            var apiTestFile = Transform(apiTestTemplate)
+                .Replace("[@ApiTestRequests]", string.Join($"{Environment.NewLine}{space}{space}", requests))
+                .Replace("[@ApiTestFunctions]", string.Join($"{Environment.NewLine}{Environment.NewLine}", apiTestFuncList));
 
             SaveToFile(apiTestFile, _settings.PathToGeneratedTests, $"{_settings.ApiName}Test");
         }
@@ -143,48 +146,53 @@ namespace OpenApiToCSharpGenerator.Common
             var required = schema.Value.Required;
             var properties = new List<string>();
             var space = new string(' ', 8);
+            var componentItemTemplate = File.ReadAllText(Path.Combine("Templates", _settings.Template.ToString(), "ComponentItemTemplate.txt"));
+
             foreach (var property in schema.Value.Properties)
             {
-                var pName = property.Key;
-                var pType = ToType(property.Value, pName);
-                var prop = string.Empty;
-                if (required != null && required.Contains(pName))
-                    prop += $"{space}[JsonRequired]{Environment.NewLine}";
+                var pNameOrigin = property.Key;
+                var pType = ToType(property);
 
-                prop += $"{space}[JsonProperty(\"{pName}\"{(pType.EndsWith("?") ? ", NullValueHandling = NullValueHandling.Ignore" : string.Empty)})]{Environment.NewLine}";
-                prop += $"{space}public {pType} {ToName(pName)} {{ get; set; }}";
-                properties.Add(prop);
+                var componentItem = Transform(componentItemTemplate, null, property.Value)
+                    .Replace("[@PropertyNameOrigin]", pNameOrigin)
+                    .Replace("[@PropertyName]", ToName(pNameOrigin))
+                    .Replace("[@PropertyType]", pType);
+
+                properties.Add(componentItem);
             }
 
             var fullName = schema.Key;
-            var i = fullName.LastIndexOf('.');
 
-            var className = string.Empty;
-            var nsp = string.Empty;
-            var path = string.Empty;
+            string className;
+            string nsp;
+            string path;
 
-            if (i > 0)
-            {
-                nsp = fullName.Remove(i);
-                className = fullName.Remove(0, i + 1);
-                path = Path.Combine(_settings.PahtToGeneratedComponents, nsp);
-            }
-            else
+            if (schema.Value.Reference.IsLocal)
             {
                 nsp = $"{_settings.ProjectName}.{_settings.SubProjectName}.Models";
                 className = $"{fullName}Model";
                 path = _settings.PathToModels;
             }
-
+            else
+            {
+                var i = fullName.LastIndexOf('.');
+                nsp = fullName.Remove(i);
+                className = fullName.Remove(0, i + 1);
+                path = Path.Combine(_settings.PahtToGeneratedComponents, nsp);
+            }
 
             var componentTemplate = File.ReadAllText(Path.Combine("Templates", _settings.Template.ToString(), "ComponentTemplate.txt"));
-            var componentFile = componentTemplate
-                .Replace("[@namespace]", nsp)
-                .Replace("[@className]", className)
-                .Replace("[@apiName]", _settings.ApiName)
-                .Replace("[@fields]", string.Join($"{Environment.NewLine}{space}{Environment.NewLine}", properties));
+            var componentFile = Transform(componentTemplate, null, schema.Value)
+                .Replace("[@Namespace]", nsp)
+                .Replace("[@ClassName]", className)
+                .Replace("[@Fields]", string.Join($"{Environment.NewLine}{space}{Environment.NewLine}", properties));
 
             SaveToFile(componentFile, path, className);
+        }
+
+        private string ToType(KeyValuePair<string, OpenApiSchema> property)
+        {
+            return ToType(property.Value, property.Key);
         }
 
         private string CreateRequestClass(KeyValuePair<string, OpenApiPathItem> openApiPath, KeyValuePair<OperationType, OpenApiOperation> apiOperation)
@@ -283,12 +291,10 @@ namespace OpenApiToCSharpGenerator.Common
 
             var requestName = GetFunctionName(openApiPath, apiOperation);
             var requestModelTemplate = File.ReadAllText(Path.Combine("Templates", _settings.Template.ToString(), "RequestModelTemplate.txt"));
-            var requestModelFile = requestModelTemplate
-                .Replace("[@projectName]", _settings.ProjectName)
-                .Replace("[@subProjectName]", _settings.SubProjectName)
-                .Replace("[@requestName]", requestName)
-                .Replace("[@fields]", sb.ToString());
-            // .Replace("@fields", string.Join($"{Environment.NewLine}{space}{Environment.NewLine}", properties));
+            var requestModelFile = Transform(requestModelTemplate)
+                .Replace("[@RequestName]", requestName)
+                .Replace("[@Fields]", sb.ToString());
+            // .Replace("@Fields", string.Join($"{Environment.NewLine}{space}{Environment.NewLine}", properties));
 
             SaveToFile(requestModelFile, _settings.PathToRequests, requestName);
             return requestName;
@@ -340,6 +346,15 @@ namespace OpenApiToCSharpGenerator.Common
 
         private string ToType(OpenApiSchema schema, string pName)
         {
+            if (schema.Enum != null && schema.Enum.Any())
+            {
+                if (schema.Enum?.Any() == true)
+                {
+                    AddEnum(schema, pName);
+                    return $"{pName}Enum[]";
+                }
+            }
+
             switch (schema.Type)
             {
                 case "integer" when schema.Format == "int64":
@@ -356,18 +371,12 @@ namespace OpenApiToCSharpGenerator.Common
                     return "IFormFile";
                 case "object" when schema.Reference != null:
                 {
-                    var i = schema.Reference.Id.LastIndexOf('.');
+                    if (schema.Reference.IsLocal)
+                    {
+                        return $"{schema.Reference.Id}Model";
+                    }
 
-                    string typeWithNamespace;
-                    if (i > 0)
-                    {
-                        typeWithNamespace = schema.Reference.Id;
-                    }
-                    else
-                    {
-                        typeWithNamespace = $"{schema.Reference.Id}Model";
-                    }
-                    return typeWithNamespace;
+                    return schema.Reference.Id;
                 }
                 case "object":
                 {
@@ -381,11 +390,6 @@ namespace OpenApiToCSharpGenerator.Common
                 {
                     if (schema.Items == null)
                     {
-                        if (schema.Enum.Any())
-                        {
-                            return $"{pName}Type[]";
-                        }
-
                         throw new NotImplementedException();
                     }
                     return $"{ToType(schema.Items, pName)}[]";
@@ -411,6 +415,39 @@ namespace OpenApiToCSharpGenerator.Common
                     return "NotImplemented";
                 }
             }
+        }
+
+        private void AddEnum(OpenApiSchema schema, string pName)
+        {
+            var enumItemTemplate = File.ReadAllText(Path.Combine("Templates", _settings.Template.ToString(), "EnumItemTemplate.txt"));
+
+            var enumFields = new List<string>();
+            for (var i = 0; i < schema.Enum.Count; i++)
+            {
+                var field = schema.Enum[i];
+                switch (field)
+                {
+                    case Microsoft.OpenApi.Any.OpenApiString typed:
+                    {
+                        var enumItem = Transform(enumItemTemplate)
+                            .Replace("[@Key]", typed.Value)
+                            .Replace("[@Value]", i.ToString());
+                        enumFields.Add(enumItem);
+                        break;
+                    }
+                    default:
+                    {
+                        throw new NotImplementedException();
+                    }
+                }
+            }
+
+            var enumTemplate = File.ReadAllText(Path.Combine("Templates", _settings.Template.ToString(), "EnumTemplate.txt"));
+            var enumFile = Transform(enumTemplate, null, schema)
+                .Replace("[@EnumName]", ToName(pName))
+                .Replace("[@EnumFields]", string.Join($"{Environment.NewLine}{Environment.NewLine}", enumFields));
+
+            SaveToFile(enumFile, _settings.PathToGeneratedEnums, $"{_settings.ApiName}Test");
         }
 
         private void SaveToFile(string file, string dirPath, string className)
@@ -453,5 +490,41 @@ namespace OpenApiToCSharpGenerator.Common
             }
             return outStr;
         }
+
+        private string Transform(string file, OpenApiOperation openApiOperation = null, OpenApiSchema schema = null, OpenApiDocument api = null)
+        {
+            file = file
+                .Replace($"[@{nameof(_settings.ProjectName)}]", _settings.ProjectName)
+                .Replace($"[@{nameof(_settings.SubProjectName)}]", _settings.SubProjectName)
+                .Replace($"[@{nameof(_settings.ApiName)}]", _settings.ApiName);
+
+            if (openApiOperation != null)
+            {
+                file = file
+                    .Replace($"[@{nameof(_internalVariables.OnDeprecated)}]", openApiOperation.Deprecated ? _internalVariables.OnDeprecated : string.Empty)
+                    .Replace($"[@{nameof(openApiOperation.Description)}]", openApiOperation.Description);
+            }
+            if (schema != null)
+            {
+                file = file
+                    .Replace($"[@{nameof(_internalVariables.OnDeprecated)}]", schema.Deprecated ? _internalVariables.OnDeprecated : string.Empty)
+                    .Replace($"[@{nameof(schema.Description)}]", schema.Description)
+                    .Replace($"[@{nameof(_internalVariables.OnNullableProperty)}]", schema.Nullable ? _internalVariables.OnNullableProperty : string.Empty);
+            }
+            //if (api != null)
+            //{
+            //    file = file
+            //    .Replace("[@Description]", api.Description);
+            //}
+
+            return file;
+        }
+    }
+
+    public class InternalVariables
+    {
+        public string OnDeprecated { get; set; }
+        public string OnRequired { get; set; }
+        public string OnNullableProperty { get; set; }
     }
 }

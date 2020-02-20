@@ -1,14 +1,14 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using [@projectName].[@subProjectName].Models.Requests; 
+using [@ProjectName].[@SubProjectName].Models.Requests; 
 
-namespace [@projectName].Tests.[@subProjectName]Tests
+namespace [@ProjectName].Tests.[@SubProjectName]Tests
 {
-    public partial class [@subProjectName]Test : BaseTest
+    public partial class [@SubProjectName]Test : BaseTest
     {
-        [@apiTestRequests]
+        [@ApiTestRequests]
 
-[@apiTestFunctions]
+[@ApiTestFunctions]
     }
 }

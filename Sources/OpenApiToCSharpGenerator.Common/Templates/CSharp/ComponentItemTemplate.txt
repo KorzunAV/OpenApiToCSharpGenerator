@@ -1,0 +1,5 @@
+﻿        /// <summary>
+        /// [@Description]
+        /// </summary>
+        [@OnDeprecated][@OnRequired][JsonProperty("[@PropertyNameOrigin]"[@OnNullableProperty])]
+        public [@PropertyType] [@PropertyName] { get; set; }

@@ -25,8 +25,7 @@ namespace OpenApiToCSharpGenerator {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("https://gate.decta.com/static/swagger/swagger_decta.yaml?v=defa3b686bc9de9ccaa31c" +
-            "04b6343533")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string UrlToOpenApi {
             get {
                 return ((string)(this["UrlToOpenApi"]));
@@ -153,6 +152,18 @@ namespace OpenApiToCSharpGenerator {
             }
             set {
                 this["Template"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string PathToGeneratedEnums {
+            get {
+                return ((string)(this["PathToGeneratedEnums"]));
+            }
+            set {
+                this["PathToGeneratedEnums"] = value;
             }
         }
     }
