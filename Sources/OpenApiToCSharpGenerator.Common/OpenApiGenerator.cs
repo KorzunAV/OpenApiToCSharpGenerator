@@ -154,6 +154,7 @@ namespace OpenApiToCSharpGenerator.Common
                 var pType = ToType(property);
 
                 var componentItem = Transform(componentItemTemplate, null, property.Value)
+                    .Replace($"[@{nameof(InternalVariables.OnRequired)}]", (required != null && required.Contains(pNameOrigin)) ? _internalVariables.OnRequired : string.Empty)
                     .Replace("[@PropertyNameOrigin]", pNameOrigin)
                     .Replace("[@PropertyName]", ToName(pNameOrigin))
                     .Replace("[@PropertyType]", pType);
@@ -325,7 +326,7 @@ namespace OpenApiToCSharpGenerator.Common
             throw new NotImplementedException("GetResponseClass");
         }
 
-        private string ToName(string name, bool firstUpper = true)
+        private string ToName(string name, bool firstUpper = true, bool replaceNums = false)
         {
             var sb = new StringBuilder(name);
             for (var i = 0; i < sb.Length; i++)
@@ -333,13 +334,27 @@ namespace OpenApiToCSharpGenerator.Common
                 if (i == 0 && firstUpper)
                     sb[i] = char.ToUpper(sb[i]);
 
-                if (sb[i] == '_' && i + 1 < sb.Length)
+                if ((sb[i] == '_' || sb[i] == '.') && i + 1 < sb.Length)
                     sb[i + 1] = char.ToUpper(sb[i + 1]);
             }
-            sb.Replace("_", string.Empty);
+            sb.Replace("_", string.Empty).Replace(".", string.Empty);
             var rez = sb.ToString();
             if (rez.Equals("params"))
                 rez = "parameters";
+
+            if (replaceNums)
+            {
+                rez = rez
+                    .Replace("1", "One")
+                    .Replace("2", "Two")
+                    .Replace("3", "Three")
+                    .Replace("4", "Four")
+                    .Replace("5", "Five")
+                    .Replace("6", "Six")
+                    .Replace("7", "Seven")
+                    .Replace("8", "Eight")
+                    .Replace("9", "Nine");
+            }
 
             return rez;
         }
@@ -351,7 +366,11 @@ namespace OpenApiToCSharpGenerator.Common
                 if (schema.Enum?.Any() == true)
                 {
                     AddEnum(schema, pName);
-                    return $"{pName}Enum[]";
+
+                    if (schema.Type == "array")
+                        return $"{ToName(pName)}Enum[]";
+
+                    return $"{ToName(pName)}Enum";
                 }
             }
 
@@ -430,7 +449,8 @@ namespace OpenApiToCSharpGenerator.Common
                     case Microsoft.OpenApi.Any.OpenApiString typed:
                     {
                         var enumItem = Transform(enumItemTemplate)
-                            .Replace("[@Key]", typed.Value)
+                            .Replace("[@Key]", ToName(typed.Value, true, true))
+                            .Replace("[@KeyOriginal]", typed.Value)
                             .Replace("[@Value]", i.ToString());
                         enumFields.Add(enumItem);
                         break;
@@ -447,7 +467,7 @@ namespace OpenApiToCSharpGenerator.Common
                 .Replace("[@EnumName]", ToName(pName))
                 .Replace("[@EnumFields]", string.Join($"{Environment.NewLine}{Environment.NewLine}", enumFields));
 
-            SaveToFile(enumFile, _settings.PathToGeneratedEnums, $"{_settings.ApiName}Test");
+            SaveToFile(enumFile, _settings.PathToGeneratedEnums, $"{ToName(pName)}Enums");
         }
 
         private void SaveToFile(string file, string dirPath, string className)
@@ -467,14 +487,14 @@ namespace OpenApiToCSharpGenerator.Common
             SaveToFile(sb.ToString(), dirPath, className);
         }
 
-        private string GetSummary(string text, int spaceNum)
+        private string GetSummary(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return string.Empty;
 
             var arr = text.Split(new[] { Environment.NewLine, "\r\n", "\n\r", "\n", "\r" }, StringSplitOptions.None);
-            var space = new string(' ', spaceNum);
-            return string.Format($"{space}/// ", arr.Select(t => t.Trim()));
+            var summ = string.Join(_internalVariables.SummaryNewLine, arr.Select(t => t.Trim()));
+            return summ;
         }
 
         private string ToUrl(in KeyValuePair<string, OpenApiPathItem> openApiPath, in KeyValuePair<OperationType, OpenApiOperation> apiOperation)
@@ -502,13 +522,13 @@ namespace OpenApiToCSharpGenerator.Common
             {
                 file = file
                     .Replace($"[@{nameof(_internalVariables.OnDeprecated)}]", openApiOperation.Deprecated ? _internalVariables.OnDeprecated : string.Empty)
-                    .Replace($"[@{nameof(openApiOperation.Description)}]", openApiOperation.Description);
+                    .Replace($"[@{nameof(openApiOperation.Description)}]", GetSummary(openApiOperation.Description));
             }
             if (schema != null)
             {
                 file = file
                     .Replace($"[@{nameof(_internalVariables.OnDeprecated)}]", schema.Deprecated ? _internalVariables.OnDeprecated : string.Empty)
-                    .Replace($"[@{nameof(schema.Description)}]", schema.Description)
+                    .Replace($"[@{nameof(schema.Description)}]", GetSummary(schema.Description))
                     .Replace($"[@{nameof(_internalVariables.OnNullableProperty)}]", schema.Nullable ? _internalVariables.OnNullableProperty : string.Empty);
             }
             //if (api != null)
@@ -519,12 +539,5 @@ namespace OpenApiToCSharpGenerator.Common
 
             return file;
         }
-    }
-
-    public class InternalVariables
-    {
-        public string OnDeprecated { get; set; }
-        public string OnRequired { get; set; }
-        public string OnNullableProperty { get; set; }
     }
 }

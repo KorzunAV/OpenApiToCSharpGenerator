@@ -1,4 +1,5 @@
 ﻿            /// <summary>
-            /// [@Description]
+            ///
             /// </summary>
-            [@OnDeprecated][@Key]=[@Value],
+            [EnumMember(Value = "[@KeyOriginal]")]
+            [@Key]=[@Value],

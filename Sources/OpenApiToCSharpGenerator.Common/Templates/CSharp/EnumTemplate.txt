@@ -1,9 +1,14 @@
-﻿namespace [@ProjectName].[@SubProjectName].Enums
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System.Runtime.Serialization;
+
+namespace [@ProjectName].[@SubProjectName].Enums
 {
     /// <summary>
     /// [@Description]
     /// </summary>
-    [@OnDeprecated]public enum [@EnumName]Enum
+    [@OnDeprecated][JsonConverter(typeof(StringEnumConverter))]
+    public enum [@EnumName]Enum
     {
 [@EnumFields]
     }

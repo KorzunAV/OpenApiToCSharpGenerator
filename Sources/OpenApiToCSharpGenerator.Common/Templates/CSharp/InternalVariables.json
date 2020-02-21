@@ -1,5 +1,6 @@
 {
   "OnDeprecated": "[Obsolete]",
   "OnNullableProperty": ", NullValueHandling = NullValueHandling.Ignore",
-  "OnRequired": "[JsonRequired]"
+  "OnRequired": "[JsonRequired]",
+  "SummaryNewLine": "\r\n        /// "
 }
