@@ -13,7 +13,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.OpenApi" Version="1.2.0-preview" />
     <PackageReference Include="Microsoft.OpenApi.Readers" Version="1.2.0-preview" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
   <ItemGroup>
